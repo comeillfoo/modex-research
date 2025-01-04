@@ -1,31 +1,25 @@
 %F abp.c
-%X -L abp_snd.lut -n abp_snd
-%X -L abp_rcv.lut -n abp_rcv
+%X -L abp_rcv.lut -a abp_receiver
+%X -L abp_snd.lut -a abp_sender
+## algorithm of switching between luts is cryptic for me
+%X -L abp_rcv.lut -a abp_receiver
 %L abp_snd
-(!get_data(...	false
-send(out)	c_code { Pp_abp_snd->s = Pp_abp_snd->out.seq; }; qr!s
+Declare	bit	s	abp_sender
+(!fetch_data(...	true
+send(m)		c_code { Pp_abp_sender->s = Pp_abp_sender->m.seq; }; \
+		qr!s
+receive(...	qs?s; \
+		c_code { Pp_abp_sender->ack.seq = Pp_abp_sender->s; }
+%%
 %L abp_rcv
-put_data(...	skip
-send(out)	c_code { Pp_abp_rcv->s = Pp_abp_rcv->out.seq; }; qs!s
+Declare	bit	s	abp_receiver
+store_data(...	skip
+send(ack)	c_code { Pp_abp_receiver->s = Pp_abp_receiver->ack.seq; }; \
+		qs!s
+receive(...	qr?s; \
+		c_code { Pp_abp_receiver->m.seq = Pp_abp_receiver->s; }
+%%
 %P
 chan qs = [0] of { bit };
 chan qr = [0] of { bit };
-
-active proctype p_abp_snd()
-{	bit s;
-
-	do
-	:: qs?s -> c_code { Pp_abp_snd->in.seq = Pp_abp_snd->s; };
-	#include "_modex_abp_snd.pml"
-	od
-}
-
-active proctype p_abp_rcv()
-{	bit s;
-	qs!0; /* start sender */
-	do
-	:: qr?s -> c_code { Pp_abp_rcv->in.seq = Pp_abp_rcv->s; };
-	#include "_modex_abp_rcv.pml"
-	od
-}
 %%
