@@ -1,10 +1,11 @@
+## comment for mutex.prx
 %X -p user
 %X -e lock
 %X -e unlock
 %P
 init {
     atomic {
-        run p_user(1)	// the promela process names are
+        run p_user(1);	// the promela process names are
         run p_user(2)	// the function names with prefix p_
     }
 }

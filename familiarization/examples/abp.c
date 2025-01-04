@@ -1,44 +1,35 @@
+/* fig. 9 */
+
 typedef struct Msg Msg;
-struct Msg
-{
-    short seq;  /* sequence number  */
-    char *cont; /* message contents */
+struct Msg {
+	short seq;	/* sequence number  */
+	char  *cont;	/* message contents */
 };
 
-void abp_sender()
-{
-    Msg m, ack;
-    int bytes = 0;
+int
+abp_snd(Msg in)
+{	Msg out;
 
-    m.seq = 0;
-    ack.seq = 0;
-
-    for (;;) {
-        if (ack.seq == m.seq) {
-            bytes = fetch_data(&m.cont);
-            if (bytes > 0) {
-                m.seq = 1 - m.seq;
-            } else {
-                break; /* no more data: done */
-            }
-        }
-        send(m);
-        receive(&ack);
-    }
+	if (in.seq == out.seq)
+	{
+		if (get_data(out.cont))	/* more data  */
+			return 0;		/* we're done */
+		out.seq = 1 - out.seq;		/* flip sequence number */
+	}
+	send(out);				/* send message */
+	return 1;
 }
 
-void abp_receiver()
-{
-    Msg m, ack;
-    short expect = 1;
+void
+abp_rcv(Msg in)
+{	Msg out;
+	int expect = 0;
 
-    for (;;) {
-        receive(&m); /* get new msg */
-        ack.seq = m.seq;
-        send(ack);
-        if (m.seq == expect) {
-            store_data(m.cont);
-            expect = 1 - expect;
-        }
-    }
+	out.seq  = in.seq;
+	out.cont = (char *) 0;
+	send(out);				/* always acknowledge */
+	if (in.seq == expect)
+	{	put_data(in.cont);		/* accept data recvd */
+		expect = 1 - expect;		/* flip sequence number */
+	}
 }

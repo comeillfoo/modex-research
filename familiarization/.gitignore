@@ -1,5 +1,10 @@
-_modex_.run
+_modex_.*
+_modex_*.pml
+_modex_*.h
 model
 pan
 pan.*
 *.trail
+*.lut
+*.nlut
+*.M
