@@ -12,11 +12,20 @@
 1. [tcpdump](https://github.com/the-tcpdump-group/tcpdump) / [libpcap](https://github.com/the-tcpdump-group/libpcap)
 1. [OpenSSH](https://github.com/openssh/openssh-portable)
 1. [Mosquitto?](https://github.com/eclipse-mosquitto/mosquitto)
+1. [9p](https://blog.aqwari.net/9p/)
 
 ## Отчет о проделанной работе
 
-TODO
+Главным критерием при отборе реализаций сетевых протоколов было число строк в
+исходном коде, так как большие проекты труднее было бы осознать как мне самому,
+так и читающему.
+
+Под данный критерий в основном подпадают разные утилиты (`netcat`, `curl`,
+`wget`, `tcpdump`, `tc`, `iptables`) и библиотеки к ним (`libcurl`, `libpcap`,
+`libuv`) или относительно простые протоколы типа _запрос-ответ_ (`9p` и `HTTP`).
+
+`TODO: выбрать, обосновать выбор, почему только один или несколько, выводы`.
 
 ## Источники
 
-1. `TODO`
+1. `TODO: источник на разъесняющие материалы по выбранному проекту`
