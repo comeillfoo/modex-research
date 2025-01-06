@@ -66,28 +66,28 @@ descriptors %*/
 Образец для теста: `nsock/tests/connect.c:connect_tcp`.
 
 ```C
-ncat_main.c:ncat_connect_mode() {
+ncat/ncat_main.c:ncat_connect_mode() {
     /*% mdx: some checks on arguments %*/
-    ncat_connect.c:ncat_connect() {
-        if ((mypool = ../nsock/src/nsock_pool.c:nsock_pool_new(NULL)) == NULL)
+    ncat/ncat_connect.c:ncat_connect() {
+        if ((mypool = nsock/src/nsock_pool.c:nsock_pool_new(NULL)) == NULL)
         /*% mdx: init nsock pool and sets callbacks on io_operations according
          *% to set engine, default "select" %*/
             bye("Failed to create nsock_pool.");
 
         if (!o.proxytype) {
-            ncat_connect.c:try_nsock_connect(...) {
-                ../nsock/src/nsock_connect.c:nsock_connect_tcp(...) {
+            ncat/ncat_connect.c:try_nsock_connect(...) {
+                nsock/src/nsock_connect.c:nsock_connect_tcp(...) {
                     nse = event_new(ms, NSE_TYPE_CONNECT, nsi, ...);
                     /*% mdx: ... %*/
                     /* Do the actual connect() */
-                    ../nsock/src/nsock_connect.c:nsock_connect_internal(...) {
+                    nsock/src/nsock_connect.c:nsock_connect_internal(...) {
                         /* Now it is time to actually attempt the connection */
                         if (nsock_make_socket(...) == -1) /*% mdx: creates
                         socket via socket() syscall %*/ {
                             /*% mdx: sets error values in event struct %*/
                         } else {
                             if (ms->engine->io_operations->iod_connect(...) /*%
-mdx: ../nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
+mdx: nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
                                 return connect(sockfd, addr, addrlen);
                             } == -1) {
                                 /*% mdx: sets error values in event struct %*/
@@ -95,7 +95,7 @@ mdx: ../nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
                         }
                     };
                     /*% mdx: this will make nsp->events_pending > 0 %*/
-                    ../nsock/src/nsock_core.c:nsock_pool_add_event(ms, nse) {
+                    nsock/src/nsock_core.c:nsock_pool_add_event(ms, nse) {
                         nsp->events_pending++;
                     };
                 };
@@ -105,19 +105,19 @@ mdx: ../nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
             /*% mdx: some setups that are not important for us %*/
         }
         /* connect */
-        rc = ../nsock/src/nsock_core.c:nsock_loop(mypool, -1) {
+        rc = nsock/src/nsock_core.c:nsock_loop(mypool, -1) {
             while (1) {
-                if (../nsock/src/nsock_internal.h:nsock_engine_loop(ms,
+                if (nsock/src/nsock_internal.h:nsock_engine_loop(ms,
                 msecs_left) {
                     return nsp->engine->loop(nsp, msec_timeout)
-                    /*% mdx: ../nsock/src/engine_select.c:select_loop(...) %*/ {
+                    /*% mdx: nsock/src/engine_select.c:select_loop(...) %*/ {
                         /*% mdx: because of try_connect, there is always single
                          *% pending event of nse->type == NSE_TYPE_CONNECT %*/
                         if (nsp->events_pending == 0)
                             return 0; /* No need to wait on 0 events ... */
 
                         do {
-                            nse = ../nsock/src/nsock_internal.h:next_expirable_event(nsp)
+                            nse = nsock/src/nsock_internal.h:next_expirable_event(nsp)
                                   /*% mdx: obtains event from min-heap priority queue %*/;
 
                             if (iod_count > 0) {
@@ -137,7 +137,7 @@ mdx: ../nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
                         /* Iterate through all the event lists (such as connect_events, read_events,
                          * timer_events, etc) and take action for those that have completed (due to
                          * timeout, i/o, etc) */
-                        ../nsock/src/engine_select.c:iterate_through_event_lists(nsp) {
+                        nsock/src/engine_select.c:iterate_through_event_lists(nsp) {
                             for (current = ...; ...; current = next) {
                                 struct niod *nsi = container_of(current,...);
                                 if (nsi->state != NSIOD_STATE_DELETED && nsi->events_pending)
