@@ -14,7 +14,7 @@
 1. [Mosquitto?](https://github.com/eclipse-mosquitto/mosquitto)
 1. [9p](https://blog.aqwari.net/9p/)
 
-###  netcat
+### [netcat (nmap)](https://github.com/nmap/nmap/tree/master/ncat)
 
 Основная директория с утилитой `nmap/ncat`. `nmap/ncat/ncat_main.c` содержит
 функцию `main`, которая парсит входные параметры и дергает другие функции,
@@ -45,7 +45,7 @@ descriptors %*/
                     rc = ncat_listen.c:read_stdin(...) {
                         nbytes = READ_STDIN(buf, sizeof(buf));
                         ncat_core.c:ncat_broadcast(...);
-                    }
+                    };
                 } else if (!o.sendonly) /*% mdx: --send-only disabled? %*/ {
                     /* Read from a client and write to stdout. */
                     rc = ncat_listen.c:read_socket(cfd) {
@@ -53,12 +53,12 @@ descriptors %*/
                             n = ncat_core.c:ncat_recv(fdn, buf, sizeof(buf),
                                                       &pending);
                         } while (pending); /*% mdx: fd in pending? %*/
-                    }
+                    };
                 }
             }
         }
-    }
-}
+    };
+};
 ```
 
 #### Connect. Клиентская
@@ -71,21 +71,104 @@ ncat_main.c:ncat_connect_mode() {
     ncat_connect.c:ncat_connect() {
         if ((mypool = ../nsock/src/nsock_pool.c:nsock_pool_new(NULL)) == NULL)
         /*% mdx: init nsock pool and sets callbacks on io_operations according
-to set engine, default "select" %*/
+         *% to set engine, default "select" %*/
             bye("Failed to create nsock_pool.");
 
         if (!o.proxytype) {
             ncat_connect.c:try_nsock_connect(...) {
-                // TODO:
-            }
+                ../nsock/src/nsock_connect.c:nsock_connect_tcp(...) {
+                    nse = event_new(ms, NSE_TYPE_CONNECT, nsi, ...);
+                    /*% mdx: ... %*/
+                    /* Do the actual connect() */
+                    ../nsock/src/nsock_connect.c:nsock_connect_internal(...) {
+                        /* Now it is time to actually attempt the connection */
+                        if (nsock_make_socket(...) == -1) /*% mdx: creates
+                        socket via socket() syscall %*/ {
+                            /*% mdx: sets error values in event struct %*/
+                        } else {
+                            if (ms->engine->io_operations->iod_connect(...) /*%
+mdx: ../nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
+                                return connect(sockfd, addr, addrlen);
+                            } == -1) {
+                                /*% mdx: sets error values in event struct %*/
+                            }
+                        }
+                    };
+                    /*% mdx: this will make nsp->events_pending > 0 %*/
+                    ../nsock/src/nsock_core.c:nsock_pool_add_event(ms, nse) {
+                        nsp->events_pending++;
+                    };
+                };
+            };
         } else {
             /* A proxy connection. */
-            // ...
+            /*% mdx: some setups that are not important for us %*/
         }
-        // TODO:
-    }
-}
+        /* connect */
+        rc = ../nsock/src/nsock_core.c:nsock_loop(mypool, -1) {
+            while (1) {
+                if (../nsock/src/nsock_internal.h:nsock_engine_loop(ms,
+                msecs_left) {
+                    return nsp->engine->loop(nsp, msec_timeout)
+                    /*% mdx: ../nsock/src/engine_select.c:select_loop(...) %*/ {
+                        /*% mdx: because of try_connect, there is always single
+                         *% pending event of nse->type == NSE_TYPE_CONNECT %*/
+                        if (nsp->events_pending == 0)
+                            return 0; /* No need to wait on 0 events ... */
+
+                        do {
+                            nse = ../nsock/src/nsock_internal.h:next_expirable_event(nsp)
+                                  /*% mdx: obtains event from min-heap priority queue %*/;
+
+                            if (iod_count > 0) {
+                                /* Set up the descriptors for select */
+                                /*% mdx: read/write/except descriptors setup %*/
+                                results_left = ../nbase/nbase_misc.c:fselect(...);
+                                if (results_left == -1)
+                                /*% mdx: I bet that ends do-while loop %*/
+                                    sock_err = socket_errno();
+                            } else if (combined_msecs > 0) {
+                                // No compatible IODs; sleep the remainder of the wait time.
+                                usleep(combined_msecs * 1000);
+                            }
+                        } while (results_left == -1 && sock_err == EINTR); /*
+                        repeat only if signal occurred */
+
+                        /* Iterate through all the event lists (such as connect_events, read_events,
+                         * timer_events, etc) and take action for those that have completed (due to
+                         * timeout, i/o, etc) */
+                        ../nsock/src/engine_select.c:iterate_through_event_lists(nsp) {
+                            for (current = ...; ...; current = next) {
+                                struct niod *nsi = container_of(current,...);
+                                if (nsi->state != NSIOD_STATE_DELETED && nsi->events_pending)
+                                /*% mdx: this function invokes select_read
+                                 *% and select_write %*/
+                                    process_iod_events(nsp, nsi, get_evmask(nsp, nsi));
+
+                                next = gh_lnode_next(current);
+                            }
+
+                            /* iterate through timers and expired events */
+                            process_expired_events(nsp);
+                        };
+                        return 1;
+                    };
+                } == -1) {
+                    quitstatus = NSOCK_LOOP_ERROR;
+                    break;
+                }
+            }
+            return quitstatus;
+        };
+    };
+};
 ```
+> я дропаю эту тяжелую махину, тут надо столько резать, чтобы modex на него натравить
+
+### [netcat (OpenBSD)](https://github.com/openbsd/src/blob/master/usr.bin/nc/netcat.c)
+
+`TODO: заполнить`
+> для modex достаточно дважды `readwrite` как `passive proctype` излечь
 
 ## Отчет о проделанной работе
 
