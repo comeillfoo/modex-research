@@ -26,32 +26,33 @@
 
 ```C
 ncat_main.c:ncat_listen_mode(...) {
-    // some checks on arguments
+    /*% mdx: some checks on arguments %*/
     ncat_listen.c:ncat_listen(...) {
-        // setup fd list and listening sockets
-        // also adds stdin as client fd
-        while (client_fdlist.nfds > 1 || get_conn_count() > 0) /* suppose:
-while active connections exist, including stdin? */ {
-            fds_ready = fselect(client_fdlist.fdmax + 1, &readfds, &writefds,
-                                NULL, tvp); // get ready file descriptors
-            for (i = 0; i < client_fdlist.nfds && fds_ready > 0; i++) /* for
-each ready fd */ {
-                if (checked_fd_isset(cfd, &listen_fds)) /* is listening socket
-ready? */       {
+        /*% mdx: setup fd list and listening sockets also adds stdin as client fd %*/
+        while (client_fdlist.nfds > 1 || ncat_listen.c:get_conn_count() > 0) /*%
+mdx: suppose: while active connections exist, including stdin? %*/ {
+            fds_ready = ../nbase/nbase_misc.c:fselect(client_fdlist.fdmax + 1,
+                        &readfds, &writefds, NULL, tvp); /*% mdx: get ready file
+descriptors %*/
+            for (i = 0; i < client_fdlist.nfds && fds_ready > 0; i++) /*% mdx:
+            for each ready fd %*/ {
+                if (../nbase/nbase.h:checked_fd_isset(cfd, &listen_fds)) /*% mdx:
+                is listening socket ready? %*/ {
                     /* we have a new connection request */
-                    handle_connection(cfd, type, &listen_fds);
+                    ncat_listen.c:handle_connection(cfd, type, &listen_fds);
                 } else if (cfd == STDIN_FILENO) {
                     /* Read from stdin and write to all clients. */
-                    rc = read_stdin(...) {
-                        ncat_broadcast(...);
+                    rc = ncat_listen.c:read_stdin(...) {
+                        nbytes = READ_STDIN(buf, sizeof(buf));
+                        ncat_core.c:ncat_broadcast(...);
                     }
-                } else if (!o.sendonly) /* --send-only disabled? */ {
+                } else if (!o.sendonly) /*% mdx: --send-only disabled? %*/ {
                     /* Read from a client and write to stdout. */
-                    rc = read_socket(cfd) {
+                    rc = ncat_listen.c:read_socket(cfd) {
                         do {
-                            /* ncat.prx:ncat_recv(...) 42 */
-                            n = ncat_recv(fdn, buf, sizeof(buf), &pending);
-                        } while (pending); /* fd in pending? */
+                            n = ncat_core.c:ncat_recv(fdn, buf, sizeof(buf),
+                                                      &pending);
+                        } while (pending); /*% mdx: fd in pending? %*/
                     }
                 }
             }
@@ -64,9 +65,25 @@ ready? */       {
 
 Образец для теста: `nsock/tests/connect.c:connect_tcp`.
 
-```
-ncat_main.c:ncat_listen_mode() {
-    // TODO: заполнить
+```C
+ncat_main.c:ncat_connect_mode() {
+    /*% mdx: some checks on arguments %*/
+    ncat_connect.c:ncat_connect() {
+        if ((mypool = ../nsock/src/nsock_pool.c:nsock_pool_new(NULL)) == NULL)
+        /*% mdx: init nsock pool and sets callbacks on io_operations according
+to set engine, default "select" %*/
+            bye("Failed to create nsock_pool.");
+
+        if (!o.proxytype) {
+            ncat_connect.c:try_nsock_connect(...) {
+                // TODO:
+            }
+        } else {
+            /* A proxy connection. */
+            // ...
+        }
+        // TODO:
+    }
 }
 ```
 
