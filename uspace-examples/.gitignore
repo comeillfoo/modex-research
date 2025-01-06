@@ -1,1 +1,5 @@
 nmap/
+_modex_.*
+model
+*.lut
+_modex_*.pml

@@ -1,1 +1,28 @@
-## TODO: fill in for testing
+%F ncat/nmap/nsock/src/engine_select.c
+%X -L select_loop.lut -p select_loop
+%L select_loop
+assert(...	warn
+gh_list_count(...	warn
+nsock_log_debug_all(...	warn
+next_expirable_event(...	warn
+TIMEVAL_MSEC_SUBTRACT(...	warn
+MAX(...	warn
+pcap_read_on_nonselect(...	hide
+memset(...	warn
+fselect(...	warn
+socket_errno()	warn
+usleep(...	warn
+gettimeofday(...	warn
+socket_strerror(...	warn
+nsock_log_error(...	warn
+iterate_through_event_lists(...	warn
+%%
+%P
+chan qs = [0] of { bit };
+chan qr = [0] of { bit };
+
+active proctype p_connect_mode()
+{
+    #include "_modex_select_loop.pml"
+}
+%%
