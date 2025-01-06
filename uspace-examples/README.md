@@ -141,8 +141,8 @@ mdx: nsock/src/nsock_engines.c:posix_iod_connect(...) %*/ {
                             for (current = ...; ...; current = next) {
                                 struct niod *nsi = container_of(current,...);
                                 if (nsi->state != NSIOD_STATE_DELETED && nsi->events_pending)
-                                /*% mdx: this function invokes select_read
-                                 *% and select_write %*/
+                                /*% mdx: this function invokes posix_io_read
+                                 *% and posix_io_write %*/
                                     process_iod_events(nsp, nsi, get_evmask(nsp, nsi));
 
                                 next = gh_lnode_next(current);
