@@ -2,16 +2,31 @@
 %X -n readwrite
 ## use 'none' cause -L with %X don't work
 %L none
-shutdown(...	skip
+NonState	hidden	family
+NonState	hidden	timeout
+NonState	hidden	minttl
+NonState	hidden	ttl
+NonState	hidden	lflag
+shutdown(...	warn
+atelnet(...	hide
+Substitute	c_expr { now.dflag }	true
+Substitute	now.lflag	Pp_readwrite->lflag
 %%
 %P
-active proctype p_tcp_server()
+proctype p_tcp_server(bool lflag)
 {
     #include "_modex_readwrite.pml"
 }
 
-active proctype p_tcp_client()
+proctype p_tcp_client(bool lflag)
 {
     #include "_modex_readwrite.pml"
+}
+
+init {
+    atomic {
+        run p_tcp_client(false);
+        run p_tcp_server(true);
+    }
 }
 %%
