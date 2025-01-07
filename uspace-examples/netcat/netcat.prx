@@ -1,0 +1,17 @@
+%F netcat/nc/netcat.c
+%X -n readwrite
+## use 'none' cause -L with %X don't work
+%L none
+shutdown(...	skip
+%%
+%P
+active proctype p_tcp_server()
+{
+    #include "_modex_readwrite.pml"
+}
+
+active proctype p_tcp_client()
+{
+    #include "_modex_readwrite.pml"
+}
+%%

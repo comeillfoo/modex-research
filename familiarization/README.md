@@ -1,6 +1,6 @@
 # Ознакомление с инструментом modex и исследование его возможностей
 
-## Заметки
+## Notes. Заметки
 
 1. `makefile` для сборки не позволяет собрать `modex` - [make install broken · Issue #13 · nimble-code/Modex](https://github.com/nimble-code/Modex/issues/13)
 2. пример из мануала не выдает ошибок на этапе верификации - [Question about "A Simple Threads Example (threads.c)" · Issue #6 · nimble-code/Modex](https://github.com/nimble-code/Modex/issues/6). Исправлено добавлением файла `threads.prx`:
@@ -10,7 +10,7 @@
 данная директива указывает инструменту извлечь модель из всех функций в коде, а
 не только из функции, чье название совпадает с именем файла (extract all fcts as active proctypes).
 
-## Отчет о проделанной работе
+## Report. Отчет о проделанной работе
 
 Дабы разобраться с новым для себя инструментом логично первым делом было зайти
 на его официальный сайт [spinroot.com/modex](https://spinroot.com/modex/)
