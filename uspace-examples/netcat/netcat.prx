@@ -7,26 +7,53 @@ NonState	hidden	timeout
 NonState	hidden	minttl
 NonState	hidden	ttl
 NonState	hidden	lflag
+NonState	hidden	pfd
 shutdown(...	warn
 atelnet(...	hide
-Substitute	c_expr { now.dflag }	true
+Substitute	c_expr { now.dflag }	dflag
+Substitute	c_code { Pp_readwrite->stdin_fd=(-1); }	stdin_closed = true
+Substitute	c_expr { now.iflag }	false
 Substitute	now.lflag	Pp_readwrite->lflag
+Substitute	c_expr { (Pp_readwrite->num_fds==(-1)) }	false
+Substitute	c_code { pfd[0].fd=Pp_readwrite->stdin_fd; }	pfd[0].fd = stdin
+Substitute	c_code { pfd[0].events=POLLIN; }	pfd[0].closed = stdin_closed
+Substitute	c_code { pfd[1].fd=Pp_readwrite->net_fd; }	pfd[1].fd = netin
+Substitute	c_code { pfd[1].events=0; }	pfd[1].closed = false
+Substitute	c_code { pfd[2].fd=Pp_readwrite->net_fd; }	pfd[2].fd = netout
+Substitute	c_code { pfd[2].events=POLLIN; }	pfd[2].closed = false
+Substitute	c_code { pfd[3].fd=Pp_readwrite->stdout_fd; }	pfd[3].fd = stdout
+Substitute	c_code { pfd[3].events=0; }	pfd[3].closed = false
 %%
 %P
-proctype p_tcp_server(bool lflag)
+typedef PFD {
+    bool closed;
+    chan fd;
+}
+
+proctype p_tcp_server(bool lflag, bool dflag, chan stdin, chan netin, chan netout, chan stdout)
 {
+    PFD pfd[4];
+    bool stdin_closed = false;
     #include "_modex_readwrite.pml"
 }
 
-proctype p_tcp_client(bool lflag)
+proctype p_tcp_client(bool lflag, bool dflag, chan stdin, chan netin, chan netout, chan stdout)
 {
+    PFD pfd[4];
     #include "_modex_readwrite.pml"
 }
+
 
 init {
+    chan client_stdin = [4] of { mtype };
+    chan server_stdin = [4] of { mtype };
+    chan client_stdout = [8] of { mtype };
+    chan server_stdout = [8] of { mtype };
+    chan client_server = [0] of { mtype };
+    chan server_client = [0] of { mtype };
     atomic {
-        run p_tcp_client(false);
-        run p_tcp_server(true);
+        run p_tcp_client(false, false, client_stdin, server_client, client_server, client_stdout);
+        run p_tcp_server(true, false, server_stdin, client_server, server_client, server_stdout);
     }
 }
 %%
