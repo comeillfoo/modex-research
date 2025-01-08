@@ -6,8 +6,8 @@ MODEX_FLAGS=-v -Y -q8
 NETCAT_PRJ_DIR=netcat
 NETCAT_DIR=$(NETCAT_PRJ_DIR)/nc
 NETCAT_INCDIRS=$(NETCAT_DIR)
-NETCAT_DEFS='size_t=unsigned' 'ssize_t=signed' 'socklen_t=unsigned' \
-			'time_t=unsigned' 'FILE=void' 'uint32_t=unsigned'
+NETCAT_DEFS='size_t=int' 'ssize_t=int' 'socklen_t=int' \
+			'time_t=int' 'FILE=void' 'uint32_t=int'
 
 NCAT_PRJ_DIR=ncat
 NMAP_DIR=$(NCAT_PRJ_DIR)/nmap

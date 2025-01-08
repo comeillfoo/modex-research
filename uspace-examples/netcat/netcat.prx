@@ -2,58 +2,125 @@
 %X -n readwrite
 ## use 'none' cause -L with %X don't work
 %L none
+NonState	hidden	unix_dg_tmp_socket
+NonState	hidden	portlist
+NonState	hidden	recvcount
+NonState	hidden	recvlimit
+NonState	hidden	Zflag
+NonState	hidden	tls_protocols
+NonState	hidden	tls_ciphers
+NonState	hidden	tls_expecthash
+NonState	hidden	tls_expectname
+NonState	hidden	TLSopt
+NonState	hidden	tls_cachanged
+NonState	hidden	Rflag
+NonState	hidden	oflag
+NonState	hidden	Kflag
+NonState	hidden	Cflag
+NonState	hidden	usetls
+NonState	hidden	rtableid
+NonState	hidden	Tflag
+NonState	hidden	Sflag
+NonState	hidden	Oflag
+NonState	hidden	Iflag
+NonState	hidden	Dflag
+NonState	hidden	zflag
+NonState	hidden	xflag
+NonState	hidden	vflag
+NonState	hidden	uflag
+NonState	hidden	tflag
+NonState	hidden	sflag
+NonState	hidden	rflag
+NonState	hidden	pflag
+NonState	hidden	Pflag
+NonState	hidden	nflag
+NonState	hidden	kflag
+NonState	hidden	iflag
+NonState	hidden	Fflag
+NonState	hidden	dflag
+NonState	hidden	tls_ctx
 NonState	hidden	family
 NonState	hidden	timeout
 NonState	hidden	minttl
 NonState	hidden	ttl
 NonState	hidden	lflag
 NonState	hidden	pfd
+NonState	hidden	stdout_fd
+NonState	hidden	stdin_fd
+NonState	hidden	stdout_fd
+NonState	hidden	net_fd
 shutdown(...	warn
 atelnet(...	hide
-Substitute	c_expr { now.dflag }	dflag
-Substitute	c_code { Pp_readwrite->stdin_fd=(-1); }	stdin_closed = true
-Substitute	c_expr { now.iflag }	false
-Substitute	now.lflag	Pp_readwrite->lflag
+Substitute	c_expr { dflag }	dflag
+Substitute	c_code { stdin_fd=(-1); }	stdin_closed = true
+Substitute	c_expr { iflag }	false
 Substitute	c_expr { (Pp_readwrite->num_fds==(-1)) }	false
-Substitute	c_code { pfd[0].fd=Pp_readwrite->stdin_fd; }	pfd[0].fd = stdin
-Substitute	c_code { pfd[0].events=POLLIN; }	pfd[0].closed = stdin_closed
-Substitute	c_code { pfd[1].fd=Pp_readwrite->net_fd; }	pfd[1].fd = netin
-Substitute	c_code { pfd[1].events=0; }	pfd[1].closed = false
-Substitute	c_code { pfd[2].fd=Pp_readwrite->net_fd; }	pfd[2].fd = netout
-Substitute	c_code { pfd[2].events=POLLIN; }	pfd[2].closed = false
-Substitute	c_code { pfd[3].fd=Pp_readwrite->stdout_fd; }	pfd[3].fd = stdout
-Substitute	c_code { pfd[3].events=0; }	pfd[3].closed = false
+Substitute	c_code { pfd[0].fd=stdin_fd; }	pfd[POLL_STDIN].fd = stdin
+Substitute	c_code { pfd[0].events=POLLIN; }	pfd[POLL_STDIN].closed = stdin_closed
+Substitute	c_code { pfd[1].fd=net_fd; }	pfd[POLL_NETOUT].fd = netout
+Substitute	c_code { pfd[1].events=0; }	pfd[POLL_NETOUT].closed = false
+Substitute	c_code { pfd[2].fd=net_fd; }	pfd[POLL_NETIN].fd = netin
+Substitute	c_code { pfd[2].events=POLLIN; }	pfd[POLL_NETIN].closed = false
+Substitute	c_code { pfd[3].fd=stdout_fd; }	pfd[POLL_STDOUT].fd = stdout
+Substitute	c_code { pfd[3].events=0; }	pfd[POLL_STDOUT].closed = false
+Substitute	(pfd[0].fd==(-1))	(Pp_readwrite->pfd[POLL_STDIN].closed)
+Substitute	(pfd[1].fd==(-1))	(Pp_readwrite->pfd[POLL_NETOUT].closed)
+Substitute	(pfd[2].fd==(-1))	(Pp_readwrite->pfd[POLL_NETIN].closed)
+Substitute	(pfd[3].fd==(-1))	(Pp_readwrite->pfd[POLL_STDOUT].closed)
+Substitute	(Pp_readwrite->stdinbufpos==0)	empty(Pp_readwrite->pfd[POLL_STDIN].fd)
+Substitute	(Pp_readwrite->netinbufpos==0)	empty(Pp_readwrite->pfd[POLL_NETIN].fd)
+Substitute	lflag	Pp_readwrite->lflag
+Substitute	c_code { Pp_readwrite->n=0; }	hide
+Substitute	c_expr { (pfd[Pp_readwrite->n].revents&(POLLERR|POLLNVAL)) }	false
+Substitute	c_expr { (Pp_readwrite->n<4) }	false
+num_fds=poll(...	num_fds = (empty(pfd[POLL_STDIN].fd) ? 0 : 1) \
+    + (empty(pfd[POLL_NETOUT].fd) ? 0 : 1) \
+    + (empty(pfd[POLL_NETIN].fd) ? 0 : 1) \
+    + (empty(pfd[POLL_STDOUT].fd) ? 0 : 1)
 %%
 %P
+#define POLL_STDIN  0
+#define POLL_NETOUT 1
+#define POLL_NETIN  2
+#define POLL_STDOUT 3
+#define BUFSIZE (4)
+
+mtype = { hello, msg1, msg2, bye };
+
 typedef PFD {
     bool closed;
-    chan fd;
+    chan fd
 }
 
-proctype p_tcp_server(bool lflag, bool dflag, chan stdin, chan netin, chan netout, chan stdout)
+proctype p_readwrite(bool lflag, bool dflag, chan stdin, chan netin, chan netout, chan stdout)
 {
     PFD pfd[4];
     bool stdin_closed = false;
     #include "_modex_readwrite.pml"
 }
 
-proctype p_tcp_client(bool lflag, bool dflag, chan stdin, chan netin, chan netout, chan stdout)
+proctype p_tcp_server(bool dflag, chan netin, chan netout)
 {
-    PFD pfd[4];
-    #include "_modex_readwrite.pml"
+    chan stdin = [BUFSIZE] of { mtype };
+    chan stdout = [BUFSIZE] of { mtype };
+    stdin ! hello; stdin ! msg1; stdin ! msg2; stdin ! bye;
+    run p_readwrite(true, dflag, stdin, netin, netout, stdout)
 }
 
+proctype p_tcp_client(bool dflag, chan netin, chan netout)
+{
+    chan stdin = [BUFSIZE] of { mtype };
+    chan stdout = [BUFSIZE] of { mtype };
+    stdin ! hello; stdin ! msg1; stdin ! msg2; stdin ! bye;
+    run p_readwrite(false, dflag, stdin, netin, netout, stdout)
+}
 
 init {
-    chan client_stdin = [4] of { mtype };
-    chan server_stdin = [4] of { mtype };
-    chan client_stdout = [8] of { mtype };
-    chan server_stdout = [8] of { mtype };
-    chan client_server = [0] of { mtype };
-    chan server_client = [0] of { mtype };
+    chan client_server = [BUFSIZE] of { mtype };
+    chan server_client = [BUFSIZE] of { mtype };
     atomic {
-        run p_tcp_client(false, false, client_stdin, server_client, client_server, client_stdout);
-        run p_tcp_server(true, false, server_stdin, client_server, server_client, server_stdout);
+        run p_tcp_client(false, server_client, client_server);
+        run p_tcp_server(false, client_server, server_client);
     }
 }
 %%
