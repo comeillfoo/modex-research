@@ -2,36 +2,40 @@
 %X -n readwrite
 ## use 'none' cause -L with %X don't work
 %L none
-shutdown(...	warn
+shutdown(...	hide
 atelnet(...	warn
 dflag	false
 iflag	false
 pfd[0].fd=stdin_fd	hide
-pfd[0].events=POLLIN	hide
 pfd[1].fd=net_fd	hide
-pfd[1].events=0	hide
 pfd[2].fd=net_fd	hide
-pfd[2].events=POLLIN	hide
-pfd[3].fd=stdout_fd	stdout.fd = [BUFSIZE] of { mtype }
-pfd[3].events=0	stdout.closed = false
-pfd[0].fd=(-1)	hide
-pfd[1].fd=(-1)	pipe[netout].closed = true
-pfd[2].fd=(-1)	pipe[netin].closed = true
-pfd[3].fd=(-1)	stdout.closed = true
-num_fds=poll(pfd,4,...	poll(pfd, num_fds)
+pfd[3].fd=stdout_fd	hide
+pfd[0].events=POLLIN	skip
+pfd[1].events=0	skip
+pfd[2].events=POLLIN	skip
+pfd[2].events=0	skip
+pfd[3].events=0	skip
+pfd[3].events=POLLOUT	skip
+pfd[0].fd=(-1)	skip
+pfd[1].fd=(-1)	pipe[netout].closed[lflag] = true
+pfd[2].fd=(-1)	pipe[netin].closed[lflag] = true
+pfd[3].fd=(-1)	skip
+num_fds=poll(pfd,4,...	poll(netin, netout, lflag, num_fds)
 (num_fds==0)	num_fds==0
 (((pfd[0].events&POLLIN)&&(pfd[0].revents&POLLHUP))&&(!(pfd[0].revents&POLLIN)))	false
-(((pfd[2].events&POLLIN)&&(pfd[2].revents&POLLHUP))&&(!(pfd[2].revents&POLLIN)))	pipe[netin].closed
-(pfd[1].revents&POLLHUP)	pipe[netout].closed
+(((pfd[2].events&POLLIN)&&(pfd[2].revents&POLLHUP))&&(!(pfd[2].revents&POLLIN)))	pipe[netin].closed[!lflag]
+(pfd[1].revents&POLLHUP)	pipe[netout].closed[!lflag]
 ((pfd[1].fd!=(-1))&&Nflag)	false
-(pfd[3].revents&POLLHUP)	stdout.closed
-(pfd[1].fd==(-1))	pipe[netout].closed
-(pfd[3].fd==(-1))	stdout.closed
-(pfd[2].fd!=(-1))	!pipe[netin].closed
-ret=fillbuf(pfd[0].fd,stdinbuf,...	printf("Not implemented yet!")
-ret=drainbuf(pfd[1].fd,stdinbuf,...	printf("Not implemented yet!")
-ret=fillbuf(pfd[2].fd,netinbuf,...	printf("Not implemented yet!")
-ret=drainbuf(pfd[3].fd,netinbuf,...	printf("Not implemented yet!")
+(pfd[3].revents&POLLHUP)	false
+(pfd[1].fd==(-1))	pipe[netout].closed[lflag]
+(pfd[3].fd==(-1))	false
+(pfd[2].fd!=(-1))	!pipe[netin].closed[lflag]
+ret=fillbuf(pfd[0].fd,stdinbuf,...	warn
+ret=drainbuf(pfd[1].fd,stdinbuf,...	warn
+ret=fillbuf(pfd[2].fd,netinbuf,...	fillbuf(pipe[netin].fd, netin_buf, netinbufpos, ret)
+ret=drainbuf(pfd[3].fd,netinbuf,...	drainbuf(netin_buf, netinbufpos, ret)
+((recvlimit>0)&&(++recvcount>=recvlimit))	false
+((pfd[2].fd!=(-1))&&tflag)	false
 NonState	hidden	unix_dg_tmp_socket
 NonState	hidden	portlist
 NonState	hidden	recvcount
@@ -79,12 +83,25 @@ NonState	hidden	pfd
 NonState	hidden	stdin_fd
 NonState	hidden	stdout_fd
 NonState	hidden	net_fd
-Substitute	c_expr { ((((pfd[0].fd==(-1))&&(pfd[2].fd==(-1)))&&(Pp_readwrite->stdinbufpos==0))&&(Pp_readwrite->netinbufpos==0)) }	pipe[netin].closed && netinbufpos == 0
-Substitute	c_expr { ((pfd[1].fd==(-1))&&(pfd[3].fd==(-1))) }	pipe[netout].closed && stdout.closed
-Substitute	c_expr { (((lflag&&(pfd[2].fd==(-1)))&&(Pp_readwrite->stdinbufpos==0))&&(Pp_readwrite->netinbufpos==0)) }	lflag && pipe[netin].closed && stdinbufpos == 0 && netinbufpos == 0
+Substitute	c_expr { ((((pfd[0].fd==(-1))&&(pfd[2].fd==(-1)))&&(Pp_readwrite->stdinbufpos==0))&&(Pp_readwrite->netinbufpos==0)) }	pipe[netin].closed[lflag] && netinbufpos == 0
+Substitute	c_expr { ((pfd[1].fd==(-1))&&(pfd[3].fd==(-1))) }	pipe[netout].closed[lflag]
+Substitute	c_expr { (((lflag&&(pfd[2].fd==(-1)))&&(Pp_readwrite->stdinbufpos==0))&&(Pp_readwrite->netinbufpos==0)) }	lflag && pipe[netin].closed[lflag] && stdinbufpos == 0 && netinbufpos == 0
 Substitute	c_expr { (Pp_readwrite->num_fds==(-1)) }	false
 Substitute	c_code { Pp_readwrite->n=0; }	hide
 Substitute	c_expr { (Pp_readwrite->n<4) }	false
+Substitute	c_expr { ((pfd[0].revents&POLLIN)&&(Pp_readwrite->stdinbufpos<16384)) }	false
+Substitute	c_expr { ((pfd[1].revents&POLLOUT)&&(Pp_readwrite->stdinbufpos>0)) }	false
+Substitute	c_expr { ((pfd[2].revents&POLLIN)&&(Pp_readwrite->netinbufpos<16384)) }	nempty(pipe[netin].fd) && netinbufpos < BUFSIZE
+Substitute	c_expr { (Pp_readwrite->ret==TLS_WANT_POLLIN) }	false
+Substitute	c_expr { (Pp_readwrite->ret==TLS_WANT_POLLOUT) }	false
+Substitute	c_expr { (Pp_readwrite->ret==(-1)) }	false
+Substitute	c_expr { (Pp_readwrite->netinbufpos>0) }	netinbufpos > 0
+Substitute	c_expr { (Pp_readwrite->netinbufpos==16384) }	netinbufpos == BUFSIZE
+Substitute	c_expr { ((pfd[3].revents&POLLOUT)&&(Pp_readwrite->netinbufpos>0)) }	netinbufpos > 0
+Substitute	c_expr { (Pp_readwrite->netinbufpos==0) }	netinbufpos == 0
+Substitute	c_expr { (Pp_readwrite->netinbufpos<16384) }	netinbufpos < BUFSIZE
+Substitute	c_expr { ((pfd[0].fd==(-1))&&(Pp_readwrite->stdinbufpos==0)) }	stdinbufpos == 0
+Substitute	c_expr { ((pfd[2].fd==(-1))&&(Pp_readwrite->netinbufpos==0)) }	pipe[netin].closed[0] && netinbufpos == 0
 %%
 %P
 #define BUFSIZE (16)
@@ -94,41 +111,47 @@ Substitute	c_expr { (Pp_readwrite->n<4) }	false
 mtype = { hello, I_am_client, I_am_server, bye };
 
 typedef FD {
-    bool closed;
+    bool closed[2];
     chan fd;
 }
 
 FD pipe[2];
-pipe[CLIENT_SERVER].fd = [BUFSIZE] of { mtype };
-pipe[CLIENT_SERVER].closed = false;
-pipe[SERVER_CLIENT].fd = [BUFSIZE] of { mtype };
-pipe[SERVER_CLIENT].closed = false;
 
-inline poll(pfd, num_fds)
+inline poll(netin, netout, lflag, num_fds)
 {
     num_fds = 0;
-    // TODO:
+    // TODO: fill in
 }
 
-inline fillbuf(fd, buf, bufpos)
+inline fillbuf(fd, buf, bufpos, ret)
+{
+    mtype msg;
+    do
+    :: nempty(fd) && bufpos < BUFSIZE ->
+       fd ? msg;
+       buf ! msg;
+       bufpos++
+    :: else -> break
+    od;
+    ret = bufpos
+}
+
+inline drainbuf(buf, bufpos, ret)
 {
     mtype msg;
     do
     :: bufpos > 0 ->
        buf ? msg;
-       fd ! msg
+       bufpos--;
+       printf("[%d]: got '%e', remain %d\n", _pid, msg, bufpos)
     :: else -> break
-    od
-}
-
-inline drainbuf(fd, buf, bufpos)
-{
-    skip
+    od;
+    ret = 0
 }
 
 proctype p_readwrite(bool lflag, int netin, int netout)
 {
-    FD stdout;
+    chan netin_buf = [BUFSIZE] of { mtype };
     #include "_modex_readwrite.pml"
 }
 
@@ -149,6 +172,12 @@ proctype p_tcp_server()
 }
 
 init {
+    pipe[CLIENT_SERVER].fd = [BUFSIZE] of { mtype };
+    pipe[CLIENT_SERVER].closed[0] = false;
+    pipe[CLIENT_SERVER].closed[1] = false;
+    pipe[SERVER_CLIENT].fd = [BUFSIZE] of { mtype };
+    pipe[SERVER_CLIENT].closed[0] = false;
+    pipe[SERVER_CLIENT].closed[1] = false;
     atomic {
         run p_tcp_client();
         run p_tcp_server();

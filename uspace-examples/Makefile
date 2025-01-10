@@ -33,7 +33,7 @@ help:
 
 clean: ncat_clean netcat_clean
 	rm -f _modex_.* model *.lut *.pml _modex_*.pml _modex_*.h pan.? pan pan.exe \
-		_spin_nvr.tmp
+		_spin_nvr.tmp pan.pre
 
 .PHONY: clean ncat_clean netcat_clean
 
