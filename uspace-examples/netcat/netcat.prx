@@ -20,7 +20,7 @@ pfd[0].fd=(-1)	skip
 pfd[1].fd=(-1)	pipe[netout].closed[lflag] = true
 pfd[2].fd=(-1)	pipe[netin].closed[lflag] = true
 pfd[3].fd=(-1)	skip
-num_fds=poll(pfd,4,...	poll(netin, netout, lflag, num_fds)
+num_fds=poll(pfd,4,...	poll(netin, lflag, num_fds)
 (num_fds==0)	num_fds==0
 (((pfd[0].events&POLLIN)&&(pfd[0].revents&POLLHUP))&&(!(pfd[0].revents&POLLIN)))	false
 (((pfd[2].events&POLLIN)&&(pfd[2].revents&POLLHUP))&&(!(pfd[2].revents&POLLIN)))	pipe[netin].closed[!lflag]
@@ -83,6 +83,8 @@ NonState	hidden	pfd
 NonState	hidden	stdin_fd
 NonState	hidden	stdout_fd
 NonState	hidden	net_fd
+NonState	hidden	stdinbuf
+NonState	hidden	netinbuf
 Substitute	c_expr { ((((pfd[0].fd==(-1))&&(pfd[2].fd==(-1)))&&(Pp_readwrite->stdinbufpos==0))&&(Pp_readwrite->netinbufpos==0)) }	pipe[netin].closed[lflag] && netinbufpos == 0
 Substitute	c_expr { ((pfd[1].fd==(-1))&&(pfd[3].fd==(-1))) }	pipe[netout].closed[lflag]
 Substitute	c_expr { (((lflag&&(pfd[2].fd==(-1)))&&(Pp_readwrite->stdinbufpos==0))&&(Pp_readwrite->netinbufpos==0)) }	lflag && pipe[netin].closed[lflag] && stdinbufpos == 0 && netinbufpos == 0
@@ -91,7 +93,7 @@ Substitute	c_code { Pp_readwrite->n=0; }	hide
 Substitute	c_expr { (Pp_readwrite->n<4) }	false
 Substitute	c_expr { ((pfd[0].revents&POLLIN)&&(Pp_readwrite->stdinbufpos<16384)) }	false
 Substitute	c_expr { ((pfd[1].revents&POLLOUT)&&(Pp_readwrite->stdinbufpos>0)) }	false
-Substitute	c_expr { ((pfd[2].revents&POLLIN)&&(Pp_readwrite->netinbufpos<16384)) }	nempty(pipe[netin].fd) && netinbufpos < BUFSIZE
+Substitute	c_expr { ((pfd[2].revents&POLLIN)&&(Pp_readwrite->netinbufpos<16384)) }	len(pipe[netin].fd) > 0 && netinbufpos < BUFSIZE
 Substitute	c_expr { (Pp_readwrite->ret==TLS_WANT_POLLIN) }	false
 Substitute	c_expr { (Pp_readwrite->ret==TLS_WANT_POLLOUT) }	false
 Substitute	c_expr { (Pp_readwrite->ret==(-1)) }	false
@@ -108,30 +110,38 @@ Substitute	c_expr { ((pfd[2].fd==(-1))&&(Pp_readwrite->netinbufpos==0)) }	pipe[n
 #define CLIENT_SERVER (0)
 #define SERVER_CLIENT (1)
 
-mtype = { hello, I_am_client, I_am_server, bye };
+mtype { hello, I_am_client, I_am_server, bye };
+chan chs[2] = [BUFSIZE] of { mtype };
 
 typedef FD {
     bool closed[2];
-    chan fd;
-}
+    chan fd
+};
 
 FD pipe[2];
 
-inline poll(netin, netout, lflag, num_fds)
+inline poll(netin, lflag, num_fds)
 {
-    num_fds = 0;
-    // TODO: fill in
+    if
+    :: nempty(pipe[netin].fd) ->
+       num_fds = (!pipe[netin].closed[lflag] -> 1 : 0)
+    :: empty(pipe[netin].fd) -> skip
+    fi
 }
 
-inline fillbuf(fd, buf, bufpos, ret)
+inline fillbuf(dfd, buf, bufpos, ret)
 {
     mtype msg;
     do
-    :: nempty(fd) && bufpos < BUFSIZE ->
-       fd ? msg;
-       buf ! msg;
-       bufpos++
-    :: else -> break
+    :: nempty(dfd) ->
+       if
+       :: bufpos < BUFSIZE ->
+          dfd ? msg;
+          buf ! msg;
+          bufpos++
+       :: else -> break
+       fi
+    :: empty(dfd) -> break
     od;
     ret = bufpos
 }
@@ -149,7 +159,7 @@ inline drainbuf(buf, bufpos, ret)
     ret = 0
 }
 
-proctype p_readwrite(bool lflag, int netin, int netout)
+proctype p_readwrite(bool lflag; int netin; int netout)
 {
     chan netin_buf = [BUFSIZE] of { mtype };
     #include "_modex_readwrite.pml"
@@ -172,10 +182,10 @@ proctype p_tcp_server()
 }
 
 init {
-    pipe[CLIENT_SERVER].fd = [BUFSIZE] of { mtype };
+    pipe[CLIENT_SERVER].fd = chs[CLIENT_SERVER];
     pipe[CLIENT_SERVER].closed[0] = false;
     pipe[CLIENT_SERVER].closed[1] = false;
-    pipe[SERVER_CLIENT].fd = [BUFSIZE] of { mtype };
+    pipe[SERVER_CLIENT].fd = chs[SERVER_CLIENT];
     pipe[SERVER_CLIENT].closed[0] = false;
     pipe[SERVER_CLIENT].closed[1] = false;
     atomic {

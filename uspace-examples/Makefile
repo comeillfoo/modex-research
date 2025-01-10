@@ -42,6 +42,7 @@ netcat:	$(NETCAT_PRJ_DIR)/netcat.prx
 		$(addprefix -I,$(NETCAT_INCDIRS)) \
 		$(addprefix -D,$(NETCAT_DEFS)) \
 		$<
+	sh _modex_.run
 
 netcat_clean:
 	rm -f $(NETCAT_DIR)/netcat.[IM]
