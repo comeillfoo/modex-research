@@ -33,7 +33,7 @@ num_fds=poll(pfd,4,...	poll(netin, lflag, num_fds)
 ret=fillbuf(pfd[0].fd,stdinbuf,...	warn
 ret=drainbuf(pfd[1].fd,stdinbuf,...	warn
 ret=fillbuf(pfd[2].fd,netinbuf,...	fillbuf(pipe[netin].fd, netin_buf, netinbufpos, ret)
-ret=drainbuf(pfd[3].fd,netinbuf,...	drainbuf(netin_buf, netinbufpos, ret)
+ret=drainbuf(pfd[3].fd,netinbuf,...	drainbuf(netin_buf, netinbufpos, lflag, ret)
 ((recvlimit>0)&&(++recvcount>=recvlimit))	false
 ((pfd[2].fd!=(-1))&&tflag)	false
 NonState	hidden	unix_dg_tmp_socket
@@ -146,14 +146,19 @@ inline fillbuf(dfd, buf, bufpos, ret)
     ret = bufpos
 }
 
-inline drainbuf(buf, bufpos, ret)
+inline drainbuf(buf, bufpos, lflag, ret)
 {
     mtype msg;
     do
     :: bufpos > 0 ->
        buf ? msg;
        bufpos--;
-       printf("[%d]: got '%e', remain %d\n", _pid, msg, bufpos)
+       if
+       :: lflag ->
+          printf("server[%d]: got '%e', remain %d\n", _pid, msg, bufpos)
+       :: !lflag ->
+          printf("client[%d]: got '%e', remain %d\n", _pid, msg, bufpos)
+       fi
     :: else -> break
     od;
     ret = 0
