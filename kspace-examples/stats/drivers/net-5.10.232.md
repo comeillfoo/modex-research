@@ -3,7 +3,7 @@
 ```
 drivers/net/wireguard
       31 text files.
-      31 unique files.                              
+      31 unique files.
        0 files ignored.
 
 github.com/AlDanial/cloc v 1.96  T=0.05 s (615.2 files/s, 140821.6 lines/s)
