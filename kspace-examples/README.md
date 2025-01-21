@@ -21,4 +21,31 @@ TODO
 количества строк кода для каждой директории внутри директорий `net` и `fs`, а
 результаты собраны в таблицу.
 
-`TODO: выбрать протокол, обосновать`.
+Дополнительно, с целью выбора наиболее простой реализации протокола, который мог
+быть не учтен в таблице, была проведена консультация с более опытными коллегами,
+которые с ядром `Linux` работали дольше и лучше ориентируются в его исходных
+кодах. Так к потенциальным примерам был добавлен протокол `WireGuard`, который
+при подсчете числа строк не был учтен, так как, в отличие от таких протоколов
+как `TCP` и `UDP`, спрятан в директории с драйверами устройств
+(`drivers/net/wireguard`), так как реализуется в виде сетевого интерфейса.
+Несмотря на то, что число строк, которые он занимает (~5600), в несколько раз
+превышает реализации других протоколов (например, около 1000 строк занимает
+протокол `WiMAX` &mdash; IEEE 802.16), сама реализация хорошо структурирована,
+что облегчает ее чтение, восприятие и дальнейшее извлечение модели из кода.
+Данный факт был лично отмечен Линусом Торвальдсом [[2]](https://lore.kernel.org/all/CA+55aFz5EWE9OTbzDoMfsY2ez04Qv9eg0KQhwKfyJY0vFvoD3g@mail.gmail.com/):
+
+> Can I just once again state my love for it and hope it gets merged
+> soon? Maybe the code isn't perfect, but I've skimmed it, and compared
+> to the horrors that are OpenVPN and IPSec, it's a work of art.
+
+Чтобы определиться с окончательной реализацией, из которой и будет извлечена
+модель, были поверхностно изучены как спецификации, так и исходные коды самых
+простых (с меньшим числом строк кода) сетевых протоколов и протокола `WireGuard`.
+По итогу, за счет хорошей структурированности кода и краткого описания, решено
+было остановиться на протоколе `WireGuard` [[1]](https://www.wireguard.com/papers/wireguard.pdf).
+
+## Sources. Источники
+
+1. [Donenfeld J. A. WireGuard: Next Generation Kernel Network Tunnel //NDSS. – 2017. – С. 1-12.](https://www.cs.wm.edu/~smherwig/readings/papers/17-ndss-wireguard.pdf)
+    + [более читаемая версия](https://www.wireguard.com/papers/wireguard.pdf)
+2. [Re: [GIT] Networking - Linus Torvalds](https://lore.kernel.org/all/CA+55aFz5EWE9OTbzDoMfsY2ez04Qv9eg0KQhwKfyJY0vFvoD3g@mail.gmail.com/)
