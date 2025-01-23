@@ -1,0 +1,21 @@
+%F linux/drivers/net/wireguard/receive.c
+%X -n wg_packet_receive
+## use 'none' cause -L with %X don't work
+%L none
+%%
+%P
+
+inline wg_packet_receive()
+{
+    #include "_modex_wg_packet_receive.pml"
+}
+
+proctype p_wg_initiator()
+{
+    wg_packet_receive()
+}
+
+init {
+    printf("Hello, World!\n")
+}
+%%
