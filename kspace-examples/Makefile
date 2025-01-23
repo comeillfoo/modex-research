@@ -1,3 +1,4 @@
+CC=gcc
 SPIN=spin
 MODEX=modex
 MAKE?=make
@@ -41,8 +42,11 @@ WG_INC_DIRS=$(LX_KERNEL)/arch/$(SRCARCH)/include \
 	$(LX_KERNEL)/arch/$(SRCARCH)/include/uapi \
 	$(LX_KERNEL)/arch/$(SRCARCH)/include/generated/uapi \
 	$(LX_KERNEL)/include/uapi $(LX_KERNEL)/include/generated/uapi $(WG_SRC_DIR)
-WG_DEFS=__KERNEL__
-CC_OPTS=-include $(LX_KERNEL)/include/linux/kconfig.h \
+WG_DEFS=__KERNEL__ '__READ_ONCE=' 'READ_ONCE=' 'smp_store_release=' \
+	'smp_load_acquire=' 'raw_cpu_read_4='
+
+CC_OPTS=-nostdinc -isystem $(shell $(CC) -print-file-name=include) \
+	-include $(LX_KERNEL)/include/linux/kconfig.h \
 	-include $(LX_KERNEL)/include/linux/compiler_types.h
 
 MODEX_FLAGS=-v -Y -q8
@@ -57,31 +61,32 @@ help:
 	@echo '- default  same as all'
 	@echo '- help     prints this help message'
 	@echo '- wg       extracts model from `linux/drivers/net/wireguard`'
-	@echo '- wg_clean cleans artifacts of wireguard model extraction'
+	@echo '- wg-clean cleans artifacts of wireguard model extraction'
 
-clean: wg_clean
+clean: wg-clean
 	rm -f _modex_.* model *.lut *.pml _modex_*.pml _modex_*.h pan.? pan pan.exe \
 		_spin_nvr.tmp pan.pre
 
-.PHONY: clean wg_clean kernelclean
+.PHONY: clean wg-clean kernel-clean
 
-wg: $(WG_PRJ_DIR)/wg.prx $(LX_KERNEL)/vmlinux
+wg: $(WG_PRJ_DIR)/wg.prx
 	$(MODEX) $(MODEX_FLAGS) \
+		-Q "$(CC_OPTS)" \
 		$(addprefix -I,$(WG_INC_DIRS)) \
 		$(addprefix -D,$(WG_DEFS)) \
 		$<
 
-wg_clean:
+wg-clean:
 	rm -f $(WG_SRC_DIR)/*.[IM]
 
-kernelclean:
+kernel-clean:
 	$(MAKE) -C $(LX_KERNEL) ARCH=$(ARCH) distclean
 	$(MAKE) -C $(LX_KERNEL) ARCH=$(ARCH) clean
 	$(MAKE) -C $(LX_KERNEL) ARCH=$(ARCH) mrproper
 	$(MAKE) -C $(LX_KERNEL)/tools ARCH=$(ARCH) clean
 	$(MAKE) -C $(LX_KERNEL)/tools/testing/selftests ARCH=$(ARCH) clean
 
-$(LX_KERNEL)/vmlinux:
+kernel-build:
 	$(MAKE) -C $(LX_KERNEL) ARCH=$(ARCH) tinyconfig
 	(cd $(LX_KERNEL) && ./scripts/config -e NET -e INET -e NETDEVICES \
 		-e NET_CORE -m WIREGUARD)
