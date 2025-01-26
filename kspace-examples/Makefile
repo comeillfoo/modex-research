@@ -34,6 +34,7 @@ wg: $(WG_PRJ_DIR)/wg.prx
 		$(addprefix -I,$(WG_INC_DIRS)) \
 		$(addprefix -D,$(WG_DEFS)) \
 		$<
+	sh _modex_.run
 
 wg-clean:
 	rm -f $(WG_SRC_DIR)/*.[IM]

@@ -60,30 +60,261 @@ typedef void (*work_func_t)(struct work_struct *work);
 		     skb = skb->next)
 %%
 %F wireguard/wireguard/receive.c
+%X -n wg_receive_handshake_packet
 %X -n wg_packet_receive
 %F wireguard/wireguard/send.c
 %X -n wg_packet_send_handshake_initiation
+%X -n wg_packet_send_staged_packets
 ## use 'none' cause -L with %X don't work
 %L none
+NonState	hidden	packet
+NonState	hidden	peer
+NonState	hidden	skb
+NonState	hidden	wg
+NonState	hidden	message
+NonState	hidden	mac_state
+NonState	hidden	packets
+NonState	hidden	keypair
+NonState	hidden	last_under_load
+net_dbg_ratelimited(...	warn
+wg_cookie_add_mac_to_packet(...	hide
+wg_timers_any_authenticated_packet_traversal(...	hide
+wg_timers_any_authenticated_packet_sent(...	hide
+wg_timers_handshake_initiated(...	hide
+wg_noise_handshake_create_initiation(...	true; wg_noise_handshake_create_initiation(peer, packet)
+__skb_queue_head_init(...	hide
+spin_lock_bh(...	hide
+skb_queue_splice_init(...	hide
+spin_unlock_bh(...	hide
+unlikely(...	false
+rcu_read_lock_bh(...	hide
+keypair=wg_noise_keypair_get(...	hide
+rcu_read_unlock_bh(...	hide
+wg_peer_get(...	hide
+wg_noise_keypair_put(...	hide
+skb_orphan(...	hide
+skb_queue_splice(...	hide
+wg_packet_send_queued_handshake_initiation(...	hide
+wg_packet_create_data(...	_wg_tx_packets(peer)
+wg_cookie_message_consume(...	hide
+under_load=(atomic_read(...	under_load=false
+under_load	under_load
+last_under_load	last_under_load != 0
+under_load=(!wg_birthdate_has_expired(...	under_load=false
+last_under_load=0	last_under_load=0
+mac_state=wg_cookie_validate_packet(...	packet_needs_cookie=false
+wg_packet_send_handshake_cookie(...	hide
+wg_noise_handshake_begin_session(...	true
+wg_timers_session_derived(...	hide
+wg_timers_handshake_complete(...	hide
+local_bh_disable(...	hide
+update_rx_stats(...	hide
+local_bh_enable(...	hide
+wg_timers_any_authenticated_packet_received(...	hide
+wg_peer_put(...	hide
+peer=wg_noise_handshake_consume_initiation(...	swap_peer(peer, packet)
+wg_socket_set_peer_endpoint_from_skb(...	hide
+wg_packet_send_handshake_response(...	wg_packet_send_handshake_response(peer)
+peer=wg_noise_handshake_consume_response(...	swap_peer(peer, packet)
+wg_packet_send_keepalive(...	wg_packet_send_keepalive(peer)
+WARN(...	warn
+dev_kfree_skb(...	hide
+(atomic_read(...	false
+ret=ptr_ring_produce_bh(...	ret = 0
+atomic_inc(...	hide
+cpu=wg_cpumask_next_online(...	hide
+queue_work_on(...	_wg_consume_handshake(packet)
+wg_packet_consume_data(...	_wg_consume_data(packet)
+Substitute	c_code { wg_socket_send_buffer_to_peer(Pp_wg_packet_send_handshake_initiation->peer,(&(Pp_wg_packet_send_handshake_initiation->packet)),sizeof(Pp_wg_packet_send_handshake_initiation->packet),HANDSHAKE_DSCP); }	_wg_tx_handshake_initiation(peer, packet)
+Substitute	c_expr { (!wg_birthdate_has_expired(atomic64_read((&(Pp_wg_packet_send_handshake_initiation->peer->last_sent_handshake))),REKEY_TIMEOUT)) }	false
+Substitute	c_code [Pp_wg_packet_send_handshake_initiation->peer] { atomic64_set((&(Pp_wg_packet_send_handshake_initiation->peer->last_sent_handshake)),ktime_get_coarse_boottime_ns()); }	ktime_get_coarse_boottime_ns(peer.last_sent_handshake)
+Substitute	c_code [Pp_wg_packet_send_staged_packets->packets.prev] { Pp_wg_packet_send_staged_packets->packets.prev->next=NULL; }	skip
+Substitute	c_code [(struct packet_cb *)Pp_wg_packet_send_staged_packets->packets.next->cb && Pp_wg_packet_send_staged_packets->packets.next] { (struct packet_cb *)Pp_wg_packet_send_staged_packets->packets.next->cb->keypair=Pp_wg_packet_send_staged_packets->keypair; }	skip
+Substitute	c_code [Pp_wg_packet_send_staged_packets->keypair] { WRITE_ONCE(Pp_wg_packet_send_staged_packets->keypair->sending.is_valid,false); }	skip
+Substitute	c_expr { (Pp_wg_packet_send_staged_packets->skb!=(struct sk_buff *)(&(Pp_wg_packet_send_staged_packets->packets))) }	false
+Substitute	c_code [(&(Pp_wg_packet_send_staged_packets->packets))] { Pp_wg_packet_send_staged_packets->skb=(&(Pp_wg_packet_send_staged_packets->packets))->next; }	skip
+Substitute	c_expr { ((struct message_header *)skb->data->type==cpu_to_le32(MESSAGE_HANDSHAKE_COOKIE)) }	false
+Substitute	c_code { Pp_wg_receive_handshake_packet->last_under_load=ktime_get_coarse_boottime_ns(); }	ktime_get_coarse_boottime_ns(last_under_load)
+Substitute	c_expr { (!Pp_wg_receive_handshake_packet->under_load) }	!under_load
+Substitute	c_expr { ((Pp_wg_receive_handshake_packet->under_load&&(mac_state==VALID_MAC_WITH_COOKIE))||((!Pp_wg_receive_handshake_packet->under_load)&&(mac_state==VALID_MAC_BUT_NO_COOKIE))) }	false
+Substitute	c_expr { (Pp_wg_receive_handshake_packet->under_load&&(mac_state==VALID_MAC_BUT_NO_COOKIE)) }	false
+Substitute	c_expr { Pp_wg_receive_handshake_packet->packet_needs_cookie }	packet_needs_cookie
+Substitute	c_expr { cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION) == (struct message_header *)skb->data->type }	handshake_initiation == packet.header.type
+Substitute	c_expr { cpu_to_le32(MESSAGE_HANDSHAKE_RESPONSE) == (struct message_header *)skb->data->type }	handshake_response == packet.header.type
+Substitute	c_expr { cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION) == (struct message_header *)Pp_wg_packet_receive->skb->data->type }	handshake_initiation == packet.header.type
+Substitute	c_expr { cpu_to_le32(MESSAGE_HANDSHAKE_RESPONSE) == (struct message_header *)Pp_wg_packet_receive->skb->data->type }	handshake_response == packet.header.type
+Substitute	c_expr { cpu_to_le32(MESSAGE_HANDSHAKE_COOKIE) == (struct message_header *)skb->data->type }	handshake_cookie == packet.header.type
+Substitute	c_expr { cpu_to_le32(MESSAGE_DATA) == (struct message_header *)skb->data->type }	msg_data == packet.header.type
+Substitute	c_expr { Pp_wg_packet_receive->ret }	ret != 0
+Substitute	c_code [(struct packet_cb *)skb->cb && skb] { (struct packet_cb *)skb->cb->ds=ip_tunnel_get_dsfield(ip_hdr(skb),skb); }	skip
 %%
 %P
+#define EBUSY (16)
+mtype = { msg_invalid, handshake_initiation, handshake_response, handshake_cookie, msg_data };
 
-inline wg_packet_send_handshake_initiation()
+typedef MSG_HEADER {
+	mtype type;
+	unsigned reserved: 3;
+};
+
+typedef MSG_HANDSHAKE_INIT {
+	MSG_HEADER header;
+	unsigned sender: 4;
+	int ephemeral;
+	int static;
+	unsigned timestamp: 12;
+	unsigned mac1: 16;
+	unsigned mac2: 16;
+};
+
+typedef MSG_HANDSHAKE_RESP {
+	MSG_HEADER header;
+	unsigned sender: 4;
+	unsigned receiver: 4;
+	int ephemeral;
+	// empty (padding)
+	unsigned mac1: 16;
+	unsigned mac2: 16;
+};
+
+#define MAX_UDP_PAYLOAD_SIZE (508)
+#define WG_DATA_HEADER_SIZE (12)
+#define MAX_WG_DATA_PAYLOAD_SIZE (MAX_UDP_PAYLOAD_SIZE - WG_DATA_HEADER_SIZE)
+
+typedef MSG_DATA {
+	MSG_HEADER header;
+	unsigned sender: 4;
+	unsigned receiver: 4;
+	unsigned counter: 8;
+	byte payload[MAX_WG_DATA_PAYLOAD_SIZE];
+};
+
+#define MAX_CHANS_CAPACITY (8)
+
+typedef PEER {
+	int last_sent_handshake;
+	chan handshake_initiation_ch = [MAX_CHANS_CAPACITY] of { MSG_HANDSHAKE_INIT };
+	chan staged_ch = [MAX_CHANS_CAPACITY] of { MSG_DATA };
+};
+
+PEER global_peers[2]; // shared between initiator and responsed
+
+inline ktime_get_coarse_boottime_ns(time)
 {
+	time = 0 // stub getting time in ns
+}
+
+inline wg_noise_handshake_create_initiation(peer, packet)
+{
+	skip // fill in handshake initiation packet
+}
+
+inline _wg_tx_handshake_initiation(peer, packet)
+{
+	peer.handshake_initiation_ch ! packet
+}
+
+inline wg_packet_send_handshake_initiation(peer)
+{
+	MSG_HANDSHAKE_INIT packet;
     #include "_modex_wg_packet_send_handshake_initiation.pml"
 }
 
-inline wg_packet_receive()
+inline _wg_tx_packets(peer)
+{
+	skip // encrypt data
+	skip // send data to peer
+}
+
+inline wg_packet_send_staged_packets(peer)
+{
+    #include "_modex_wg_packet_send_staged_packets.pml"
+}
+
+inline swap_peer(peer, packet)
+{
+	peer.last_sent_handshake = global_peers[packet.sender].last_sent_handshake;
+	peer.handshake_initiation_ch = global_peers[packet.sender].handshake_initiation_ch;
+	peer.staged_ch = global_peers[packet.sender].staged_ch;
+}
+
+inline wg_packet_send_handshake_response(peer)
+{
+	skip // send handshake response
+}
+
+inline _wg_tx_keepalive(peer)
+{
+	skip // send keepalive - aka empty data message
+}
+
+inline wg_packet_send_keepalive(peer)
+{
+	if
+	:: nempty(peer.staged_ch) -> wg_packet_send_staged_packets(peer)
+	:: empty(peer.staged_ch) -> _wg_tx_keepalive(peer)
+	fi
+}
+
+inline wg_receive_handshake_packet(packet)
+{
+	PEER peer;
+	int last_under_load;
+    #include "_modex_wg_receive_handshake_packet.pml"
+}
+
+inline _wg_consume_handshake(packet)
+{
+	wg_receive_handshake_packet(packet);
+	printf("consumed: handshake packet, type=%e\n", packet.header.type)
+}
+
+inline _wg_consume_data(packet)
+{
+	printf("consumed: data\n")
+}
+
+inline wg_packet_receive(packet)
 {
     #include "_modex_wg_packet_receive.pml"
 }
 
-proctype p_wg_initiator()
+inline load_initiator(peer)
 {
-    wg_packet_receive()
+	MSG_DATA data_pkt;
+	// build data packet
+	peer.staged_ch ! data_pkt;
+}
+
+proctype p_wg_initiator(PEER me)
+{
+    // handshake initiation
+    wg_packet_send_handshake_initiation(me);
+    // transport data:
+	load_initiator(me);
+    wg_packet_send_staged_packets(me)
+}
+
+proctype p_wg_responder(PEER me)
+{
+	MSG_HANDSHAKE_INIT msg_handshake_init;
+	MSG_DATA data_pkt;
+	me.handshake_initiation_ch ? msg_handshake_init;
+    // handshake response
+    wg_receive_handshake_packet(msg_handshake_init);
+    // transport data:
+	do
+	:: empty(me.staged_ch) -> break
+	:: nempty(me.staged_ch) ->
+	   me.staged_ch ? data_pkt;
+	   wg_packet_receive(data_pkt)
+	od
 }
 
 init {
-    printf("Hello, World!\n")
+    atomic {
+        run p_wg_initiator(global_peers[0]);
+        run p_wg_responder(global_peers[1]);
+    }
 }
 %%
