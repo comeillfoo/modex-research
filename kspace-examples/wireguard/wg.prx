@@ -49,13 +49,29 @@ typedef void (*work_func_t)(struct work_struct *work);
 #define container_of(ptr, type, member) (ptr)
 
 #define min_t(type, x, y) (((x) < (y)) ? (x) : (y))
+
+#define skb_list_walk_safe(first, skb, next_skb) \
+	for ((skb) = (first), (next_skb) = (skb) ? (skb)->next : NULL; (skb); \
+	     (skb) = (next_skb), (next_skb) = (skb) ? (skb)->next : NULL)
+
+#define skb_queue_walk(queue, skb) \
+		for (skb = (queue)->next; \
+		     skb != (struct sk_buff *)(queue); \
+		     skb = skb->next)
 %%
 %F wireguard/wireguard/receive.c
 %X -n wg_packet_receive
+%F wireguard/wireguard/send.c
+%X -n wg_packet_send_handshake_initiation
 ## use 'none' cause -L with %X don't work
 %L none
 %%
 %P
+
+inline wg_packet_send_handshake_initiation()
+{
+    #include "_modex_wg_packet_send_handshake_initiation.pml"
+}
 
 inline wg_packet_receive()
 {
