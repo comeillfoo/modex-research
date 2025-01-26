@@ -1,0 +1,5 @@
+#ifndef _CHACHA20POLY1305_H_
+#define _CHACHA20POLY1305_H_
+
+
+#endif // _CHACHA20POLY1305_H_

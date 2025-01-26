@@ -1,4 +1,56 @@
-%F linux/drivers/net/wireguard/receive.c
+%H
+typedef int size_t;
+typedef unsigned char u8;
+typedef unsigned long long u64;
+typedef int bool;
+typedef unsigned int __le32;
+typedef signed long long s64;
+typedef unsigned long long __le64;
+typedef unsigned int u32;
+typedef unsigned short u16;
+typedef unsigned short __be16;
+
+struct hlist_head_stub {
+    int __empty;
+};
+
+#define DECLARE_HASHTABLE(name, bits) \
+    struct hlist_head_stub name[1 << (bits)]
+
+typedef struct {
+    u64 key[2];
+} siphash_key_t;
+
+typedef struct spinlock_stub {
+    int __empty;
+} spinlock_t;
+
+typedef struct {
+	s64 counter;
+} atomic64_t;
+
+typedef struct {
+	int counter;
+} atomic_t;
+
+#define __rcu
+#define __aligned(t)
+#define __percpu
+
+typedef struct {
+	int raw_lock_stub;
+} rwlock_t;
+
+#define __must_check
+typedef void (*work_func_t)(struct work_struct *work);
+
+#define offsetof(type, member) (42)
+
+#define container_of(ptr, type, member) (ptr)
+
+#define min_t(type, x, y) (((x) < (y)) ? (x) : (y))
+%%
+%F wireguard/wireguard/receive.c
 %X -n wg_packet_receive
 ## use 'none' cause -L with %X don't work
 %L none
